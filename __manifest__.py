@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 
 {
-    'name': 'Insumar_parches',
-    'version': '4.01',
+    'name': 'Parches Impormontt',
+    'version': '16',
     'category': 'General',
     'summary': '',
     'description': """
-    Parches Insumar
+    Parches Impormontt
 
        """,
     'author' : 'M.Gah',
