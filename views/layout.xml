@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="custom_dte_header_modification" inherit_id="l10n_cl_fe.dte_external_layout" name="Modificación Header DTE">
+        <!-- 
+             Usamos XPath para encontrar el div específico dentro del header.
+             Nota: Es recomendable identificar el div por sus clases para mayor precisión.
+        -->
+        <xpath expr="//div[@class='header']//div[@class='col-7 center-text']" position="replace">
+            <div class="col-7 center-text">
+                <!-- Aquí mantenemos el Logo (si existe) y el Nombre de la empresa -->
+                <img t-if="logo" t-att-src="image_data_uri(logo)" class="logo-img"/>
+                <h4 class="company-name">
+                    <t t-esc="company.name"/>
+                </h4>
+                
+                <!-- AQUÍ INICIAN TUS NUEVOS DATOS DE CONTACTO -->
+                <p class="company-details">
+                    <span>Dirección: Alto Bonito Lt B</span><br/>
+                    <span>Ciudad: Puerto Montt</span><br/>
+                    <span>Email: administracion@impormontt.com</span>
+                    <!-- Puedes agregar más campos o campos dinámicos de Odoo como t-field="company.phone" -->
+                </p>
+            </div>
+        </xpath>
+    </template>
+</odoo>

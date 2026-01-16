@@ -11,11 +11,12 @@
        """,
     'author' : 'M.Gah',
     'website': '',
-    'depends': ['account'],
+    'depends': ['account','l10n_cl_fe'],
     'data': [
             "security/groups.xml",
             "views/configuration_menu.xml",
-            "views/product_template.xml"
+            "views/product_template.xml",
+            "views/layout.xml"
     ],
     'assets': {
         'web.report_assets_common': [
