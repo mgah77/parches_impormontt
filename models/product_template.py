@@ -20,5 +20,5 @@ class ProductDepartment(models.Model):
     @api.depends_context('uid')
     def _compute_is_admin_user(self):
         for rec in self:
-            rec.is_admin_user = self.env.user.has_group('parches_insumar.group_list_price')
+            rec.is_admin_user = self.env.user.has_group('parches_impormontt.group_list_price')
 
