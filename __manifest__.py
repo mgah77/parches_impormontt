@@ -19,7 +19,7 @@
     ],
     'assets': {
         'web.report_assets_common': [
-            'parches_insumar/static/src/css/styles_pdf_layout.css',
+            'parches_impormontt/static/src/css/styles_pdf_layout.css',
         ],
     },            
     'installable': True,
