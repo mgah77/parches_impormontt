@@ -1,0 +1,57 @@
+<odoo>
+    <record model="ir.ui.view" id="view_account_inherit_form">
+        <field name="name">account.parche.inherit.form</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="l10n_cl_fe.view_invoice_form"/>
+        <field name="arch" type="xml">
+             <xpath expr="//form" position="attributes">
+                <attribute name="duplicate">false</attribute>
+            </xpath>
+            <xpath expr="//field[@name='acteco_id']" position="attributes">
+                <attribute name="string">Actividad económica</attribute>
+            </xpath>
+            <field name="acteco_id" position="after">
+                <field name="glosa"/>
+            </field>           
+        </field>
+    </record>
+    <record model="ir.ui.view" id="view_account_inherit_tree">
+        <field name="name">account.parche.inherit.tree</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="l10n_cl_fe.invoice_tree"/>
+        <field name="arch" type="xml">
+            
+            <xpath expr="//field[@name='amount_untaxed_signed']" position="attributes">
+                <attribute name="string">Neto</attribute>
+            </xpath>
+            <xpath expr="//field[@name='amount_untaxed_signed']" position="after">
+                <field name="amount_tax_signed"/>
+            </xpath>
+            <xpath expr="//field[@name='invoice_date']" position="before">
+                <field name="glosa"/>
+            </xpath>
+            <xpath expr="//field[@name='amount_tax_signed']" position="attributes">
+                <attribute name="string">IVA</attribute>
+            </xpath>
+            <xpath expr="//field[@name='sii_document_number']" position="attributes">
+                <attribute name="string">Numero</attribute>
+            </xpath>
+            <xpath expr="//field[@name='amount_total_in_currency_signed']" position="replace">               
+            </xpath>
+            <xpath expr="//field[@name='activity_ids']" position="replace">               
+            </xpath>
+        </field>
+    </record>
+    <record id="account_move_search_custom" model="ir.ui.view">
+        <field name="name">account.move.search.glosa.prioritaria</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="l10n_cl_fe.view_account_invoice_filter"/>
+        <field name="arch" type="xml">
+        <xpath expr="//search/field[1]" position="before">
+            <field name="glosa" string="Glosa"/>
+        </xpath>
+        </field>
+    </record>   
+
+
+</odoo>

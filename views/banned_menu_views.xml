@@ -1,0 +1,39 @@
+<odoo>
+<data>
+    <record id="stock.menu_stock_inventory_control" model="ir.ui.menu"> <!-- inventario/productos -->
+        <field name="groups_id" eval="[(6, 0, [ref('parches_insumar.group_menu_prod')])]"/>
+    </record>
+    <record id="stock.menu_action_inventory_tree" model="ir.ui.menu"> <!-- inventario/operaciones/ajustes de inventario -->
+        <field name="groups_id" eval="[(6, 0, [ref('parches_insumar.group_admin')])]"/>
+    </record>
+    <record id="account.product_product_menu_sellable" model="ir.ui.menu"> <!-- facturando/clientes/productos -->
+        <field name="groups_id" eval="[(6, 0, [ref('parches_insumar.group_menu_prod')])]"/>
+    </record>
+    <record id="account.product_product_menu_purchasable" model="ir.ui.menu"> <!-- facturando/clientes/productos -->
+        <field name="groups_id" eval="[(6, 0, [ref('parches_insumar.group_menu_prod')])]"/>
+    </record>
+
+    <record id="sale.product_menu_catalog" model="ir.ui.menu"> <!-- ventas/productos -->
+        <field name="groups_id" eval="[(6, 0, [ref('parches_insumar.group_menu_prod')])]"/>
+    </record>
+
+    <record id="account.menu_finance_reports" model="ir.ui.menu"> <!-- facturando/informes -->
+        <field name="groups_id" eval="[(6, 0, [ref('parches_insumar.group_admin')])]"/>
+    </record>
+    <record id="l10n_cl_fe.menu_sii_exchange" model="ir.ui.menu"> <!-- facturando/recepcionar xml intercambio -->
+        <field name="groups_id" eval="[(6, 0, [ref('parches_insumar.group_admin')])]"/>
+    </record>
+    <record id="account.menu_finance_payables" model="ir.ui.menu"> <!-- facturando/proveedores -->
+        <field name="groups_id" eval="[(6, 0, [ref('parches_insumar.group_admin')])]"/>
+    </record>
+    <record id="account.menu_finance" model="ir.ui.menu"> <!-- facturando -->
+        <field name="groups_id" eval="[(6, 0, [ref('parches_insumar.group_admin'), ref('parches_insumar.group_sala')])]"/>
+    </record>
+    <record id="crm.crm_menu_root" model="ir.ui.menu"> <!-- CRM -->
+        <field name="groups_id" eval="[(6, 0, [ref('parches_insumar.group_master')])]"/>
+    </record>
+
+
+
+</data>
+</odoo>

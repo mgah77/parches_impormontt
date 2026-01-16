@@ -1,0 +1,11 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_product_template_read_all,access_product_template_read_all,product.model_product_template,,1,0,0,0
+access_product_template_full_edit_group,access_product_template_full_edit_group,product.model_product_template,parches_insumar.group_admin,1,1,1,1
+access_account_move_wvl,account.move.wvl,account.model_account_move,parches_insumar.group_wvl,1,0,0,0
+access_account_move_line_wvl,account.move.line.wvl,account.model_account_move_line,parches_insumar.group_wvl,1,0,0,0
+access_account_move_comision_wvl,account.move.comision.wvl,l10n_cl_fe.model_account_move_comision,parches_insumar.group_wvl,1,0,0,0
+access_account_account_tag_wvl,account.account.tag.wvl,account.model_account_account_tag,parches_insumar.group_wvl,1,0,0,0
+access_calendar_event_wvl,calendar.event.wvl,calendar.model_calendar_event,parches_insumar.group_wvl,1,0,0,0
+access_res_partner_wvl,res.partner.wvl,base.model_res_partner,parches_insumar.group_wvl,1,0,0,0
+access_price_check_wizard_user,price.check.wizard,model_price_check_wizard,base.group_user,1,1,1,1
+access_price_check_wizard_line_user,price.check.wizard.line,model_price_check_wizard_line,base.group_user,1,1,1,1

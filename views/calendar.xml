@@ -1,0 +1,14 @@
+<odoo>
+    <record model="ir.ui.view" id="view_calendar_event_parche">
+        <field name="name">calendar.event.inherit.calendar</field>
+        <field name="model">calendar.event</field>
+        <field name="inherit_id" ref="calendar.view_calendar_event_calendar"/>
+        <field name="arch" type="xml">
+            <xpath expr="//calendar[@js_class='attendee_calendar']" position="attributes">
+                <attribute name="color">user_id</attribute>  
+            </xpath>      
+
+
+        </field>
+    </record>
+</odoo>

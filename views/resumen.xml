@@ -1,0 +1,49 @@
+<odoo>
+<data>
+
+
+<record id="taller_resumen_admin" model="ir.ui.view">
+            <field name="name">taller_resumen_admin</field>
+            <field name="model">account.move</field>
+            <field name="arch" type="xml">
+                <kanban>
+                    <templates>
+                    <t t-name="kanban-box">
+                        <div class="oe_kanban_global_click">                            
+                            <div class="o_kanban_details">
+                                <span class="o_kanban_record_title">Not Paid Invoices</span>
+                                <span class="o_kanban_record_subtitle">Count: <field name="lineas_por_pagar"/></span>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+                </kanban>
+            </field>
+        </record>
+
+<record id="action_resumen_admin" model="ir.actions.act_window">
+            <field name="name">Resumen insumar</field>
+            <field name="res_model">account.move</field>        
+            <field name="view_mode">kanban</field>        
+            <field name="view_id" ref="parches_insumar.taller_resumen_admin"/>    
+        </record>       
+
+ 
+
+<menuitem        
+            id="menu_resumen"
+            parent=""
+            name="resumen"
+            sequence="7"
+        />
+
+<menuitem            
+            action="action_resumen_admin"
+            id="menu_action_resumen_admin"
+            parent="menu_resumen"
+            groups="parches_insumar.group_admin"
+            sequence="9"
+        />
+
+        </data>
+</odoo>

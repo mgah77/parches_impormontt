@@ -1,0 +1,93 @@
+<odoo>  
+    <record id="view_order_tree_glosa" model="ir.ui.view">
+        <field name="name">sale.order.tree.glosa</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_tree"/>
+        <field name="arch" type="xml">
+            <field name="partner_id" position="after">
+                <field name="glosa"/>
+            </field>
+        </field>
+    </record>
+    <record id="view_order_tree_glosa_ppto" model="ir.ui.view">
+        <field name="name">sale.order.tree.glosa_ppto</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_quotation_tree_with_onboarding"/>
+        <field name="arch" type="xml">
+            <field name="partner_id" position="after">
+                <field name="glosa"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="view_order_form_glosa" model="ir.ui.view">
+        <field name="name">sale.order.form.glosa</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="l10n_cl_fe.view_order_form"/>
+        <field name="priority">21</field>
+        <field name="arch" type="xml">
+            <field name="acteco_id" position="after">
+                <field name="glosa" attrs="{'invisible': [('acteco_ids','=', [])]}"/>
+            </field>
+        </field>
+    </record>
+    <record id="view_order_form_filter_customer" model="ir.ui.view">
+        <field name="name">sale.order.form.filter.customer</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="priority">20</field>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='partner_id']" position="attributes">
+                <attribute name="can_create">False</attribute>
+                <attribute name="can_write">False</attribute> 
+                <attribute name="domain">[('type', '!=', 'private'), ('is_company', '=', True), ('type','=','contact'), ('is_customer','=',True)]</attribute>
+            </xpath>
+            <xpath expr="//tree/field[@name='product_id']" position="attributes">
+                <attribute name="options">{'no_create': True, 'no_create_edit': True}</attribute>
+                <attribute name="domain">[('sale_ok', '=', True)]</attribute>
+                <attribute name="can_create">false</attribute>
+                <attribute name="can_write">false</attribute>
+            </xpath>
+             <xpath expr="//tree/field[@name='price_unit']" position="attributes">
+            <attribute name="options">{'widget': 'float', 'digits': [16, 0]}</attribute>
+            </xpath>
+        </field>
+    </record>
+    <record id="view_order_form_management_filter_customer" model="ir.ui.view">
+        <field name="name">sale.management.form.filter.customer</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale_management.sale_order_form_quote"/>
+        <field name="arch" type="xml"> 
+            <xpath expr="//field[@name='product_id']" position="attributes">
+                <attribute name="options">{'no_create': True, 'no_create_edit': True}</attribute>
+                <attribute name="domain">[('sale_ok', '=', True)]</attribute>
+                <attribute name="can_create">false</attribute>
+                <attribute name="can_write">false</attribute>
+            </xpath>
+             <xpath expr="//field[@name='price_unit']" position="attributes">
+            <attribute name="options">{'widget': 'float', 'digits': [16, 0]}</attribute>
+            </xpath>
+        </field>
+    </record>
+    <record id="sale_order_search_custom" model="ir.ui.view">
+        <field name="name">sale.order.search.glosa</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_sales_order_filter"/>
+        <field name="arch" type="xml">
+        <xpath expr="//search/field[1]" position="before">
+            <field name="glosa" string="Glosa"/>
+        </xpath>
+        </field>
+    </record>
+
+    <record id="view_order_form_inherit_line_number" model="ir.ui.view">
+        <field name="name">sale.order.form.line.number</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='order_line']/tree/field[@name='product_id']" position="before">
+                <field name="line_number" readonly="1" widget="integer" string="N°"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

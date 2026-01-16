@@ -1,0 +1,66 @@
+<odoo>
+    <record model="ir.ui.view" id="view_partner_parche_inherit_form">
+        <field name="name">res.partner.parche.inherit.form</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="l10n_cl_fe.view_partner_activity_inherit_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='city_id']" position="attributes">
+                <attribute name="required">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='street']" position="attributes">
+                <attribute name="required">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='document_number']" position="attributes">
+                <attribute name="required">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='zip']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='document_type_id']" position="attributes">
+                <attribute name="string">Tipo de documento</attribute>
+            </xpath>
+            <xpath expr="//field[@name='document_number']" position="attributes">
+                <attribute name="string">Número de documento</attribute>
+            </xpath>
+            <xpath expr="//field[@name='responsability_id']" position="attributes">
+                <attribute name="string">Responsabilidad</attribute>
+            </xpath>
+            <xpath expr="//field[@name='category_id']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='lang']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='acteco_ids']" position="after">
+                <group>                
+                    <field name="is_customer" />             
+                    <field name="is_provider" />   
+                </group>               
+            </xpath> 
+            <xpath expr="//div[@class='oe_title mb24']" position="after">
+                <div style="border-top: 1px solid #000; margin: 10px 0;"></div>     
+            </xpath> 
+            <xpath expr="//field[@name='website']" position="attributes">
+                <attribute name="placeholder">e.j. https://www.insumar.cl</attribute>  
+            </xpath>      
+
+
+        </field>
+    </record>
+
+    <!-- Nuevo menú Configuración dentro de Contactos -->
+    <menuitem 
+        id="menu_contacts_config_custom" 
+        name="Configuración" 
+        parent="contacts.menu_contacts" 
+        sequence="90" />
+
+    <!-- Submenú Titulos de Contacto dentro del nuevo Configuración -->
+    <menuitem 
+        id="menu_contacts_title_custom" 
+        name="Títulos de contacto" 
+        parent="menu_contacts_config_custom"
+        action="base.action_partner_title_contact"
+        sequence="10" />
+
+</odoo>

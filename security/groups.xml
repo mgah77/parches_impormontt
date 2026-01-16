@@ -1,0 +1,31 @@
+<odoo>
+    <data>
+        <record id="group_stock_pico" model="res.groups">
+            <field name="name">stock_picking</field>
+        </record>
+        <record id="group_admin" model="res.groups">
+            <field name="name">Administracion</field>
+        </record>
+        <record id="group_menu_prod" model="res.groups">
+            <field name="name">Acceso Menu Productos</field>
+        </record>
+        <record id="group_menu_config" model="res.groups">
+            <field name="name">Acceso Menu Configuracion</field>
+        </record>
+        <record id="group_list_price" model="res.groups">
+            <field name="name">Acceso Valor Productos</field>
+        </record>
+        <record id="group_wvl" model="res.groups">
+            <field name="name">WVL</field>        
+        </record>
+        <record id="group_sala" model="res.groups">
+            <field name="name">Sala de Ventas</field>        
+        </record>
+        <record id="group_master" model="res.groups">
+            <field name="name">Master</field>        
+        </record>
+        <record id="group_bodega" model="res.groups">
+            <field name="name">Grupo bodega</field>        
+        </record>
+    </data>
+</odoo>

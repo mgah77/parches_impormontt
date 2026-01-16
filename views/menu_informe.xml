@@ -1,0 +1,44 @@
+<odoo>
+
+	<menuitem        
+            id="menu_top_informes"
+            parent=""
+            name="Informes"
+            sequence="7"
+        />
+	<menuitem
+            id="menu_informes_contable"
+            name="Contabilidad"
+            parent="menu_top_informes"
+            groups="parches_insumar.group_contable"
+            sequence="29" 
+        />
+    <menuitem
+            id="menu_informes_resumen"
+            parent="menu_top_informes"
+            name="Informes"
+            groups="parches_insumar.group_informes"
+            sequence="25"
+        />  
+    
+
+    <record id="account_journal_dash" model="ir.actions.act_window">
+        <field name="name">Resumen Contable</field>
+        <field name="res_model">account.journal</field>
+        <field name="view_type">form</field>
+        <field name="view_mode">kanban,form</field>
+        <field name="view_id" ref="account.account_journal_dashboard_kanban_view"/>
+        <field name="usage">menu</field>
+        <field name="context">{'search_default_dashboard':1}</field>
+        <field name="domain">[('belongs_to_company', '=', True)]</field>
+        
+    </record>
+
+    <menuitem id="menu_board_journal_3" 
+            name="Resumen Contable" 
+            action="account_journal_dash" 
+            parent="menu_informes_resumen" 
+            sequence="1" 
+            groups="parches_insumar.group_informes"
+        />
+</odoo>

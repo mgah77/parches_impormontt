@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <!-- Acción del wizard -->
+    <record id="action_price_check_wizard" model="ir.actions.act_window">
+        <field name="name">Consulta Precios</field>
+        <field name="res_model">price.check.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <!-- Menú en el menú raíz de Ventas -->
+    <!-- Nota: En Odoo 16, el menú raíz de Ventas suele tener el xmlid 'sale.sale_menu_root'. -->
+    <menuitem id="menu_price_check_wizard"
+              name="Consulta Precios"
+              parent="sale.sale_menu_root"
+              action="action_price_check_wizard"
+              sequence="95"/>
+
+    <!-- Vista del wizard -->
+    <record id="view_price_check_wizard_form" model="ir.ui.view">
+        <field name="name">price.check.wizard.form</field>
+        <field name="model">price.check.wizard</field>
+        <field name="arch" type="xml">
+           <form string="Consulta de Precios">
+                <group>
+                    <field name="search_text" placeholder="Escriba parte del nombre o referencia"/>
+                </group>
+
+                <!-- tabla fuera de group, ocupa todo el ancho -->
+                <field name="result_ids" nolabel="1" readonly="1">
+                    <tree create="false" delete="false" editable="false">
+                        <field name="product_id"
+                            string="Producto"
+                            options="{'no_open': True, 'no_create': True, 'no_create_edit': True}"
+                            style="min-width:300px;"/>
+                        <field name="price_net"   string="Precio Neto"  widget="integer" style="width:120px;"/>
+                        <field name="price_gross" string="Precio + IVA" widget="integer" style="width:140px;"/>
+                    </tree>
+                </field>
+
+                <footer>
+                    <button string="Cerrar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>

@@ -1,0 +1,261 @@
+<odoo>
+  <template id="sale.report_saleorder_document" name="Sale Order Document">
+    <!-- pega aquí el contenido del template original que copiaste -->
+    <t t-name="sale.report_saleorder_document">
+        <t t-call="web.basic_layout">
+           <div style="margin-top: -3px;">
+            <t t-set="doc" t-value="doc.with_context(lang=doc.partner_id.lang)"/>
+            <t t-set="logo" t-value="doc.company_id.logo_web"/>
+            <t t-set="forced_vat" t-value="doc.fiscal_position_id.foreign_vat"/> <!-- So that it appears in the footer of the report instead of the company VAT if it's set -->
+                <div class="header">
+                    <div class="row" style="margin-top: 0px;">
+                        <div class="col-7 center-text">
+                            <img t-if="logo" t-att-src="image_data_uri(logo)" class="logo-img"/>
+                            <h4 class="company-name2">
+                                <t t-esc="doc.company_id.name"/>
+                            </h4>
+                            <p class="company-details2">
+                                <span t-field="doc.company_id.activity_description.name"/><br />
+                                <!-- domicilios -->
+                                <!--span>Dirección: </span><span t-field="company.street"/>, <span t-field="company.city_id.name"/>, <span t-field="company.city"/>
+                                
+                                <t t-if="o.company_id.sucursal_ids and o.use_documents">
+                                    <t t-if="len(o.company_id.sucursal_ids) == 1">
+                                    <span>Sucursal: </span><span t-field="o.company_id.sucursal_ids[0].partner_id.street"/>, <span t-field="o.company_id.sucursal_ids[0].partner_id.city_id.name"/>, <span t-field="o.company_id.sucursal_ids[0].partner_id.city"/>
+                                    </t>
+                                    <t t-else="">
+                                    <span>Sucursales: </span>
+                                        <t t-foreach="o.company_id.sucursal_ids" t-as="sucursal">
+                                        <span t-field="sucursal.partner_id.street"/>, <span t-field="sucursal.partner_id.city_id.name"/>, <span t-field="sucursal.partner_id.city"/>/
+                                        </t>
+                                    </t>
+                                </t-->
+                                <t t-if="doc.company_id.id == 1">
+                                        <t t-if="doc.team_id.id == 1">
+                                            <span>Dirección: PAR VIAL 2704, Puerto Montt</span><br/>
+                                            <span>Telefono: 65 231 3101</span><br/>  
+                                            <span>Email: ventas.parvial@insumar.cl</span><br/>                         
+                                        </t>
+                                        <t t-if="doc.team_id.id == 5">
+                                            <span>Dirección: Ñuble 190, Puerto Montt</span><br/>
+                                            <span>Telefono: 65 271 5386</span><br/>
+                                            <span>Email: ventas@insumar.cl</span><br/>  
+                                        </t>                                       
+                                </t>        
+                                <span>Encargado: <strong><span t-field="doc.user_id"/></strong></span><span>   <span t-field="doc.user_id.mobile"/></span><br/>                   
+                            </p>
+                        </div>
+                        <div class="col-5">
+                          <div class="document-box2">          
+
+                              <h6 class="rut-header2">
+                                R.U.T.: 76.445.265-8
+                              </h6>
+                              <h6 class="document-class-header2">
+                                  COTIZACION
+                              </h6>
+                              <h6 class="sii-doc-number2">
+                                  N° <span t-esc="doc.name[2:]"/>
+                              </h6>
+                              <br />                             
+                          </div>
+                          <!--div class="row center-text" style="text-align: center !important;">
+                              <p class="sii-info">
+                                SII - <span t-field="o.company_id.sii_regional_office_id.name"/>
+                              </p>
+                          </div-->
+                      </div>
+                    </div>
+                </div>
+                <div class="page" style="padding-top: 60px;">
+                    <div class="row table-container">
+                            <table class="table table-no-margin">
+                                <tbody>
+                                    <tr class="table-row-small">
+                                        <td class="table-cell-no-padding">
+                                            <strong>Señor (es):</strong>
+                                        </td>
+                                        <td class="table-cell-wide">
+                                            <span t-field="doc.partner_id.name"/>
+                                        </td>
+                                        <td class="table-cell-no-padding">
+                                            <strong>Fecha:</strong>
+                                        </td>
+                                        <td class="table-cell-no-padding">
+                                                <span t-field="doc.date_order" t-options="{&quot;widget&quot;: &quot;date&quot;}"/>
+                                        </td>
+                                    </tr>
+                                    <tr class="table-row-small">
+                                        <td class="table-cell-no-padding">
+                                            <strong>RUT:</strong>
+                                        </td>
+                                        <td class="table-cell-wide">
+                                            <span t-field="doc.partner_id.document_number"/>
+                                        </td>
+                                        <td class="table-cell-no-padding">
+                                            <strong>Comuna:</strong>
+                                        </td>
+                                        <td class="table-cell-no-padding">
+                                            <span t-field="doc.partner_id.city_id.name"/>
+                                        </td>
+                                    </tr>
+                                    <tr class="table-row-small">
+                                        <td class="table-cell-no-padding">
+                                            <strong>Domicilio:</strong>
+                                        </td>
+                                        <td class="table-cell-wide">
+                                            <span t-field="doc.partner_id.street"/>
+                                        </td>
+                                        <td class="table-cell-no-padding">
+                                            <strong>Ciudad:</strong>
+                                        </td>
+                                        <td class="table-cell-no-padding">
+                                            <span t-field="doc.partner_id.city"/>
+                                        </td>
+                                    </tr>
+                                    <tr class="table-row-small">
+                                        <td class="table-cell-no-padding">
+                                            <strong>Giro:</strong>
+                                        </td>
+                                        <td class="table-cell-wide">
+                                            <span t-field="doc.acteco_id.name"/>
+                                        </td>
+                                        <td class="table-cell-no-padding">
+                                            <strong>Condición de Pago:</strong>
+                                        </td>
+                                        <td class="table-cell-no-padding">
+                                            <span t-if="'payment_term_id' in doc" t-field="doc.payment_term_id.name"/>
+                                        </td>
+                                    </tr>
+                                    <tr class="table-row-small">
+                                        <td class="table-cell-no-padding">
+                                            <strong>Contacto:</strong>
+                                        </td>
+                                        <td class="table-cell-wide">
+                                            <t t-if="'contact_id' in doc and doc.contact_id">
+                                                <span t-field="doc.contact_id.name"/>
+                                            </t>
+                                        </td>
+                                        <td class="table-cell-no-padding">
+                                            <strong>Valido hasta:</strong>
+                                        </td>
+                                        <td class="table-cell-no-padding">
+                                            <t t-if="doc.validity_date" >
+                                               <span t-field="doc.validity_date"/>
+                                            </t>                                    
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                    </div>    
+                        
+                    <div class="oe_structure"/>
+                     
+
+                    <!-- Is there a discount on at least one line? -->
+
+                    <div class="row table-container" name="detalles" style="min-height: 550px; max-height: 550px;">
+                        <table class="table table-condensed">
+                            <thead>
+                                <tr class="table-row-small" style="padding:0px;">
+                                    <th/>                                                         
+                                    <th>Descripción</th>
+                                    <th>Cantidad</th>           
+                                    <th class="text-teft">Precio Unitario</th>                                                             
+                                    <th class="text-left">Precio</th>
+                                </tr>
+                            </thead>
+                            <tbody class="invoice_tbody" style="text-align: center;">
+                                <tr t-foreach="doc.order_line.sorted(key=lambda l: l.sequence)" t-as="l" class="table-row-small">
+                                    <td class="table-cell-no-padding">                                    
+                                        <t t-esc="(l_index + 1)"/>
+                                    </td>                                 
+                                    <td class="table-cell-no-padding" style="text-align: left;">
+                                        <span t-field="l.name"/>
+                                    </td>
+                                    <td class="table-cell-no-padding" style="text-align: right;">                                    
+                                        <span t-esc="'%.0f' % l.product_uom_qty"/>
+                                    </td>
+                                    <td class="table-cell-no-padding" style="text-align: right;">
+                                        <span t-field="l.price_unit" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id, 'digits': 0}"/>
+                                    </td>                                    
+                                    <td class="table-cell-no-padding" style="text-align: right;">                                       
+                                        <span t-field="l.price_subtotal"/>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-5" style="font-size: 10px;">
+                                <t t-if="doc.glosa">
+                                    <strong>Glosa: </strong>
+                                    <span t-field="doc.glosa"/>
+                                </t>
+                        </div>
+                        <div class="col-3" style="font-size: 10px;">                     
+                            <t t-if="doc.team_id.id == 1">
+                                <div style="font-weight: bold; color: red;">Datos para transferencia:</div>
+                                <div>Banco BCI</div>
+                                <div>Comercializadora Insumar SPA</div>
+                                <div>76.445.265-8</div>
+                                <div>Cuenta Corriente</div>
+                                <div>Nº 70846626</div>                      
+                            </t>
+                            <t t-if="doc.team_id.id == 5">
+                                <div style="font-weight: bold; color: red;">Datos para transferencia:</div>
+                                <div>Banco Internacional</div>
+                                <div>Comercializadora Insumar SPA</div>
+                                <div>76.445.265-8</div>
+                                <div>Cuenta Corriente</div>
+                                <div>Nº 9530855</div>  
+                            </t>                           
+                        </div>
+                        <div class="col-4">
+                            <div class="total-box">
+                                <table cellspacing="0" cellpadding="0" style="width: 100%; border: 2px;">
+                                    <tr style="border-bottom: 1px solid gray;">
+                                        <td style="text-align: left;  padding: 5px;">
+                                            <span>Neto</span>
+                                        </td>
+                                        <td style="text-align: right;  padding: 5px;">                                       
+                                            <span t-field="doc.amount_untaxed"/>
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid gray;">
+                                        <td  style="text-align: left; border: none; padding: 5px;">
+                                            <span>IVA</span>
+                                        </td>
+                                        <td style="text-align: right; border: none; padding: 5px;">                                       
+                                            <span t-field="doc.amount_tax"/>
+                                        </td>
+                                    </tr>
+                                    <tr style="border: none;">
+                                        <td style="text-align: left; border: none; padding: 5px;">
+                                            <strong>Total</strong>
+                                        </td>
+                                        <td style="text-align: right; border: none; padding: 5px;">                                       
+                                            <strong><span t-field="doc.amount_total"/></strong>
+                                        </td>
+                                    </tr>                                
+                                </table>                           
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+                    <div name="signature">                        
+                    </div>
+                    <div>
+                    <p name="order_note"/>                           
+                    </div>    
+                    <div name="expiration_date">                                       
+                    </div>        
+                       
+            </div>  
+        </t>
+    </t>
+  </template>
+</odoo>
