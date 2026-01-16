@@ -11,23 +11,11 @@
        """,
     'author' : 'M.Gah',
     'website': '',
-    'depends': ['account','stock','base','sale','sale_stock','sale_management','l10n_cl_fe','product','contacts','utm','hr','crm'],
+    'depends': ['account'],
     'data': [
             "security/groups.xml",
-            "security/ir.model.access.csv",
-	        "views/product_template.xml",
-            "views/stock_picking.xml",
-            "views/sale_order.xml",
-            "views/account.xml",
-            "views/banned_menu_views.xml",
             "views/configuration_menu.xml",
-            "views/partner.xml",
-            "views/calendar.xml",
-            "views/sale_template.xml",
-            "views/crm.xml",
-            "views/price_check_wizard_views.xml",
-            "views/new_account_view.xml",
-            "views/account_payment_inherit.xml"
+            "views/product_template.xml"
     ],
     'assets': {
         'web.report_assets_common': [

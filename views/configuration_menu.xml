@@ -1,25 +1,25 @@
 <odoo>
 <data>
     <record id="stock.menu_stock_config_settings" model="ir.ui.menu"> <!-- inventario/configuracion -->
-        <field name="groups_id" eval="[(6, 0, [ref('parches_insumar.group_menu_config')])]"/>
+        <field name="groups_id" eval="[(6, 0, [ref('parches_impormontt.group_menu_config')])]"/>
     </record>
     <record id="account.menu_finance_configuration" model="ir.ui.menu"> <!-- facturando/configuracion -->
-        <field name="groups_id" eval="[(6, 0, [ref('parches_insumar.group_menu_config')])]"/>
+        <field name="groups_id" eval="[(6, 0, [ref('parches_impormontt.group_menu_config')])]"/>
     </record>
     <record id="contacts.res_partner_menu_config" model="ir.ui.menu"> <!-- contactos/configuracion -->
-        <field name="groups_id" eval="[(6, 0, [ref('parches_insumar.group_menu_config')])]"/>
+        <field name="groups_id" eval="[(6, 0, [ref('parches_impormontt.group_menu_config')])]"/>
     </record>
 
     <record id="utm.menu_link_tracker_root" model="ir.ui.menu"> <!-- rastr.enlaces -->
-        <field name="groups_id" eval="[(6, 0, [ref('parches_insumar.group_menu_config')])]"/>
+        <field name="groups_id" eval="[(6, 0, [ref('parches_impormontt.group_menu_config')])]"/>
     </record>
 
     <record id="base.menu_management" model="ir.ui.menu"> <!-- aplicaciones -->
-        <field name="groups_id" eval="[(6, 0, [ref('parches_insumar.group_menu_config')])]"/>
+        <field name="groups_id" eval="[(6, 0, [ref('parches_impormontt.group_menu_config')])]"/>
     </record>
 
     <record id="hr.menu_hr_root" model="ir.ui.menu"> 
-        <field name="groups_id" eval="[(6, 0, [ref('parches_insumar.group_admin')])]"/>
+        <field name="groups_id" eval="[(6, 0, [ref('parches_impormontt.group_admin')])]"/>
     </record>
 
 
