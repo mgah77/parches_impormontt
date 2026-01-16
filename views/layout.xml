@@ -22,5 +22,19 @@
                 </p>
             </div>
         </xpath>
+        <xpath expr="//div[@class='col-3' and @style='font-size: 10px;']" position="replace">
+            <div class="col-3" style="font-size: 10px;">
+                
+                <!-- AQUÍ PON TU NUEVO CONTENIDO -->
+                <!-- Opción 1: Datos estáticos (siempre iguales) -->
+                <div style="font-weight: bold; color: red;">Datos para transferencia:</div>
+                <div>Impormontt Chile Spa</div>
+                <div>Banco BCI</div>
+                <div>RUT: 77.236.933-6</div>
+                <div>Cuenta Corriente</div>
+                <div>Nº 46404716</div>
+
+            </div>
+        </xpath>
     </template>
 </odoo>
