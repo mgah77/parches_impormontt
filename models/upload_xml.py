@@ -302,3 +302,42 @@ class SIIUploadXMLWizardInherit(models.TransientModel):
             wiz_accept = self.env["sii.dte.validar.wizard"].create(datos)
             wiz_accept.confirm()
         return created
+
+    def do_create_po(self):
+        created = []
+        dtes = self._get_dtes()
+        for dte in dtes:
+            documento = dte.find("Documento")
+            path_rut = "Encabezado/Receptor/RUTRecep"
+            
+            # --- FIX: BÚSQUEDA INTELIGENTE EN do_create_po ---
+            # El original usa format_rut que falla.
+            # Usamos nuestro helper _search_company_smart.
+            rut = documento.find(path_rut).text
+            company = self._search_company_smart(rut)
+            # ----------------------------------------------
+
+            if not company:
+                # Si no encuentra la compañía, saltamos este documento (como pediste antes)
+                _logger.warning("No se encontró compañía para el RUT %s en do_create_po. Saltando.", rut)
+                continue
+
+            path_tpo_doc = "Encabezado/IdDoc/TipoDTE"
+            dc_id = self.env["sii.document_class"].search([("sii_code", "=", documento.find(path_tpo_doc).text)])
+            if dc_id.es_factura() or dc_id.es_nd() or dc_id.es_guia() or dc_id.es_boleta_afecta():
+                try:
+                    po = self._create_po(documento, dc_id, company)
+                    created.append(po.id)
+                    if self.document_id:
+                        self.document_id.purchase_to_done = po
+                        self.document_id.auto_map_po_lines()
+                except Exception as e:
+                    msg = "Error en procesar PO: %s" % str(e)
+                    _logger.warning(msg, exc_info=True)
+                    if self.document_id:
+                        self.document_id.message_post(body=msg)
+                    continue
+                if self.action == "both" and not dc_id.es_guia():
+                    self.purchase_to_done = po
+                    self.crear_po = False
+        return created
