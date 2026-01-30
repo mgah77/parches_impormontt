@@ -162,14 +162,13 @@ class SIIUploadXMLWizardInherit(models.TransientModel):
         return created
 
     def do_create_inv(self):
-        _logger.warning("uno.")
+        
         created = []
         dtes = self._get_dtes()
         for dte in dtes:
             try:
                 # Aseguramos que procesamos como factura, no PO, para ejecutar el bloque de totales
-                self.crear_po = False 
-                _logger.warning("dos")
+                self.crear_po = False                 
                 to_post = self.type == "ventas" or self.option == "accept"
                 company_id = self.document_id.company_id
                 documento = dte.find("Documento")
@@ -177,24 +176,27 @@ class SIIUploadXMLWizardInherit(models.TransientModel):
                 if self.type == "ventas":
                     path_rut = "Encabezado/Emisor/RUTEmisor"
                 rut = documento.find(path_rut).text
-                _logger.warning("tres")
+                
                 # --- BÚSQUEDA INTELIGENTE ---
                 company_id = self._search_company_smart(rut)
                 # ---------------------------------
-                _logger.warning("cuatro")
+                
+                _logger.warning("uno.")
                 if not company_id:
                     raise UserError(_(f"No existe compañia para el rut {rut}"))
-                
+                _logger.warning("dos")
                 data = self._get_data(documento, company_id)
                 inv = self._create_inv(documento, company_id,)
                 if self.document_id:
                     self.document_id.move_id = inv.id
+                _logger.warning("tres")
                 if inv:
                     created.append(inv.id)
                 if not inv:
                     raise UserError(
                         "El archivo XML no contiene documentos para alguna empresa registrada en Odoo, o ya ha sido procesado anteriormente "
                     )
+                _logger.warning("cuatro")
                 if to_post and inv.state=="draft":
                     inv._onchange_partner_id()
                     inv._onchange_invoice_line_ids()
@@ -211,10 +213,11 @@ class SIIUploadXMLWizardInherit(models.TransientModel):
                     continue
 
                 totales = encabezado.find("Totales")
+                _logger.warning("cinco")
                 if totales is None:
                     _logger.warning("Totales no encontrado en el XML. No se actualizaron totales.")
                     continue
-                _logger.warning("cinco")
+                
                 vlr_pagar = totales.find("VlrPagar")
                 if vlr_pagar is not None and vlr_pagar.text:
                     valor_vlrpagar = int(vlr_pagar.text or 0)
