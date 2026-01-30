@@ -3,8 +3,8 @@
 import logging
 from lxml import etree
 from odoo import models, api, _
+from datetime import timedelta
 
-# Asegúrate de poder importar la librería de facturación externa
 try:
     from facturacion_electronica import facturacion_electronica as fe
 except ImportError:
@@ -17,66 +17,65 @@ _logger = logging.getLogger(__name__)
 class SIIUploadXMLWizardInherit(models.TransientModel):
     _inherit = "sii.dte.upload_xml.wizard"
 
+    def _search_company_smart(self, rut_xml):
+        """
+        Busca una compañía en res.company probando diferentes formatos de RUT.
+        Retorna el recordset de la compañía o False.
+        """
+        # Normalizar RUT del XML
+        rut_clean = rut_xml.replace(".", "").replace("-", "").replace("CL", "").upper().strip()
+        company_id = False
+
+        if len(rut_clean) >= 9:
+            rut_num = rut_clean[:-1]
+            rut_dv = rut_clean[-1]
+            
+            # Candidatos de formato
+            vat_candidates = [
+                "CL" + rut_num + "-" + rut_dv,
+                rut_num + "-" + rut_dv,
+                "CL" + rut_clean,
+                rut_clean
+            ]
+
+            # Búsqueda exacta
+            for vat in vat_candidates:
+                company_id = self.env["res.company"].search([("vat", "=", vat)], limit=1)
+                if company_id:
+                    _logger.info("Compañía encontrada para %s usando formato: %s", rut_xml, vat)
+                    break
+            
+            # Búsqueda parcial (LIKE) como último recurso
+            if not company_id:
+                company_id = self.env["res.company"].search([("vat", "like", rut_clean)], limit=1)
+                if company_id:
+                    _logger.warning("Compañía encontrada por búsqueda parcial (LIKE) para %s. VAT BD: %s", rut_xml, company_id.vat)
+        
+        if not company_id:
+            _logger.warning("No se pudo encontrar compañía para el RUT: %s", rut_xml)
+            
+        return company_id
+
     def do_receipt_deliver(self):
         self.ensure_one()
         
-        # 1. Leer el XML
         envio = self._read_xml("etree")
         if envio.find("SetDTE") is None or envio.find("SetDTE/Caratula") is None:
             return True
         
-        # 2. Obtener el RUT del Receptor desde el XML
         rut_node = envio.find("SetDTE/Caratula/RutReceptor")
         if rut_node is None or not rut_node.text:
             return True
             
         rut_xml = rut_node.text
         
-        # 3. BÚSQUEDA INTELIGENTE DE COMPAÑÍA (FIX)
-        # Normalizamos el RUT quitando puntos, guiones y CL
-        rut_clean = rut_xml.replace(".", "").replace("-", "").replace("CL", "").upper().strip()
+        # USAR MÉTODO DE BÚSQUEDA INTELIGENTE
+        company_id = self._search_company_smart(rut_xml)
         
-        company_id = False
-
-        if len(rut_clean) >= 9:
-            # Separamos el número del dígito verificador
-            rut_num = rut_clean[:-1]
-            rut_dv = rut_clean[-1]
-
-            # Generar los candidatos de formatos probables en la base de datos
-            vat_candidates = [
-                "CL" + rut_num + "-" + rut_dv,  # CL77334434-4 (Estándar Odoo l10n_cl)
-                rut_num + "-" + rut_dv,         # 77334434-4 (Formato viejo)
-                "CL" + rut_clean,               # CL77334434 (Formato actual de tu función)
-                rut_clean                       # 77334434 (Solo números)
-            ]
-
-            # Intentar buscar la compañía con cada formato candidato
-            for vat in vat_candidates:
-                company_id = self.env["res.company"].search([("vat", "=", vat)], limit=1)
-                if company_id:
-                    _logger.info("Compañía encontrada usando formato: %s -> %s", vat, company_id.name)
-                    break
-            
-            # Si no la encuentra con "=" (exacto), intentar búsqueda por contención ("like") como último recurso
-            if not company_id:
-                # Cuidado: Esto puede traer la empresa equivocada si un RUT es substring de otro
-                company_id = self.env["res.company"].search([("vat", "like", rut_clean)], limit=1)
-                if company_id:
-                    _logger.warning("Compañía encontrada por búsqueda parcial (LIKE). VAT en BD: %s", company_id.vat)
-
-        # Si no encontramos compañía, salimos
         if not company_id:
-            _logger.warning("No se pudo encontrar compañía para el RUT: %s", rut_xml)
             return True
 
-        # 4. CONTINUACIÓN DEL CÓDIGO ORIGINAL
-        # Ahora que tenemos company_id, el resto del flujo es igual
-        
-        # Obtener ID de respuesta
         IdRespuesta = self.env.ref("l10n_cl_fe.response_sequence").next_by_id()
-        
-        # Obtener datos de empresa y firma (Ahora usará la compañía correcta)
         vals = self._get_datos_empresa(company_id)
         vals.update(
             {
@@ -93,11 +92,7 @@ class SIIUploadXMLWizardInherit(models.TransientModel):
                 ]
             }
         )
-        
-        # Generar la respuesta usando la librería externa
         respuesta = fe.recepcion_xml(vals)
-        
-        # Manejo de errores
         if type(respuesta) is dict:
             if self.dte_id:
                 self.dte_id.message_post(body=respuesta['error'])
@@ -105,7 +100,6 @@ class SIIUploadXMLWizardInherit(models.TransientModel):
                 from odoo.exceptions import UserError
                 raise UserError(respuesta['error'])
                 
-        # Si todo está bien, procesar las respuestas y enviar correos
         if self.dte_id:
             for r in respuesta:
                 att = self._create_attachment(r["respuesta_xml"], r["nombre_xml"], self.dte_id.id, "mail.message.dte")
@@ -133,3 +127,178 @@ class SIIUploadXMLWizardInherit(models.TransientModel):
                 }
                 send_mail = self.env["mail.mail"].sudo().create(values)
                 send_mail.send()
+
+    def do_create_pre(self):
+        # Heredado para usar búsqueda inteligente de compañía
+        created = []
+        self.do_receipt_deliver()
+        dtes = self._get_dtes()
+        for dte in dtes:
+            try:
+                documento = dte.find("Documento")
+                
+                # --- FIX: BÚSQUEDA INTELIGENTE ---
+                # El original usaba: format_rut(documento.find(...).text)
+                rut_receptor = documento.find("Encabezado/Receptor/RUTRecep").text
+                company_id = self._search_company_smart(rut_receptor)
+                
+                if not company_id:
+                    _logger.warning("No existe compañia para %s", rut_receptor)
+                    continue
+                # ----------------------------------
+                
+                pre = self._create_pre(documento, company_id,)
+                if pre:
+                    inv = self._inv_exist(documento)
+                    pre.write(
+                        {"id_dte": documento.get("ID"), "move_id": inv.id,}
+                    )
+                    created.append(pre.id)
+            except Exception as e:
+                msg = "Error en 1 pre con error:  %s" % str(e)
+                _logger.warning(msg, exc_info=True)
+                if self.dte_id:
+                    self.dte_id.message_post(body=msg)
+        return created
+
+    def do_create_inv(self):
+        created = []
+        dtes = self._get_dtes()
+        for dte in dtes:
+            try:
+                to_post = self.type == "ventas" or self.option == "accept"
+                company_id = self.document_id.company_id
+                documento = dte.find("Documento")
+                path_rut = "Encabezado/Receptor/RUTRecep"
+                if self.type == "ventas":
+                    path_rut = "Encabezado/Emisor/RUTEmisor"
+                rut = documento.find(path_rut).text
+                
+                # --- FIX: BÚSQUEDA INTELIGENTE ---
+                # El original usaba: format_rut
+                company_id = self._search_company_smart(rut)
+                # ---------------------------------
+
+                if not company_id:
+                    # Se mantiene el comportamiento original: Error que es capturado abajo
+                    raise UserError(_(f"No existe compañia para el rut {rut}"))
+                
+                data = self._get_data(documento, company_id)
+                inv = self._create_inv(documento, company_id,)
+                if self.document_id:
+                    self.document_id.move_id = inv.id
+                if inv:
+                    created.append(inv.id)
+                if not inv:
+                    raise UserError(
+                        "El archivo XML no contiene documentos para alguna empresa registrada en Odoo, o ya ha sido procesado anteriormente "
+                    )
+                if to_post and inv.state=="draft":
+                    inv._onchange_partner_id()
+                    inv._onchange_invoice_line_ids()
+                    inv.with_context(
+                        purchase_to_done=self.purchase_to_done.id,
+                        check_move_validity=False,
+                        recompute=False,
+                    )._post()
+                    
+                # Lógica de Totales y SQL (Original)
+                encabezado = documento.find("Encabezado")
+                totales = encabezado.find("Totales")
+                vlr_pagar = totales.find("VlrPagar")
+                if vlr_pagar is not None and vlr_pagar.text:
+                    valor_vlrpagar = int(vlr_pagar.text or 0)
+                    if valor_vlrpagar != 0:
+                        mnt_total = valor_vlrpagar
+                    else:
+                        mnt_total = int(totales.find("MntTotal").text or 0)
+                else:
+                    mnt_total = int(totales.find("MntTotal").text or 0)
+
+                mnt_neto = int(totales.find("MntNeto").text or 0) if totales.find("MntNeto") is not None else 0
+                mnt_exe = int(totales.find("MntExe").text or 0) if totales.find("MntExe") is not None else 0              
+                iva = int(totales.find("IVA").text or 0) if totales.find("IVA") is not None else 0
+                neto_total = mnt_neto + mnt_exe
+                signo = -1 if inv.move_type == 'in_invoice' else 1
+                total_signed = mnt_total * signo
+                untaxed_signed = (mnt_neto + mnt_exe) * signo
+                tax_signed = iva * signo
+                residual = mnt_total
+                residual_signed = total_signed
+                currency_total_signed = total_signed
+                if inv.currency_id != inv.company_id.currency_id:
+                    currency_total_signed = inv.currency_id._convert(
+                        mnt_total,
+                        inv.currency_id,
+                        inv.company_id,
+                        inv.date or fields.Date.context_today(self)
+                    ) * signo
+
+                self.env.cr.execute("""
+                    UPDATE account_move
+                    SET amount_untaxed = %s,
+                        amount_tax = %s,
+                        amount_total = %s,
+                        amount_untaxed_signed = %s,
+                        amount_tax_signed = %s,
+                        amount_total_signed = %s,
+                        amount_total_in_currency_signed = %s,
+                        amount_residual = %s,
+                        amount_residual_signed = %s
+                    WHERE id = %s
+                """, (
+                    neto_total,
+                    iva,
+                    mnt_total,
+                    untaxed_signed,
+                    tax_signed,
+                    total_signed,
+                    currency_total_signed,
+                    residual,
+                    residual_signed,
+                    inv.id
+                ))
+
+                fch_emis = encabezado.find("IdDoc/FchEmis").text
+                fch_venc_node = encabezado.find("IdDoc/FchVenc")
+                if fch_venc_node is not None and fch_venc_node.text:
+                    fecha_vencimiento = fch_venc_node.text
+                else:
+                    fecha_emision = fields.Date.from_string(fch_emis)
+                    fecha_vencimiento = fields.Date.to_string(fecha_emision + timedelta(days=30))
+
+                self.env.cr.execute("""
+                    UPDATE account_move
+                    SET invoice_date_due = %s
+                    WHERE id = %s
+                """, (fecha_vencimiento, inv.id))
+
+                lines = data.get("invoice_line_ids", [])
+                for i, line in enumerate(inv.invoice_line_ids.filtered(lambda l: not l.display_type and not l.tax_line_id)):
+                    if i < len(lines):
+                        subtotal = lines[i][2].get("price_subtotal")
+                        if subtotal is not None:
+                            self.env.cr.execute("""
+                                UPDATE account_move_line
+                                SET price_subtotal = %s 
+                                WHERE id = %s
+                            """, (subtotal, line.id))
+
+            except Exception as e:
+                msg = "Error en crear 1 factura con error:  %s" % str(e)
+                _logger.warning(msg, exc_info=True)
+                _logger.warning(etree.tostring(dte))
+                if self.document_id:
+                    self.document_id.message_post(body=msg)
+
+        if created and self.option not in [False, "upload"] and self.type == "compras" and not self._context.get('create_only', False):
+            datos = {
+                "move_ids": [(6, 0, created)],
+                "action": "ambas",
+                "claim": "ACD",
+                "estado_dte": "0",
+                "tipo": "account.move",
+            }
+            wiz_accept = self.env["sii.dte.validar.wizard"].create(datos)
+            wiz_accept.confirm()
+        return created
