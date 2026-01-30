@@ -162,13 +162,14 @@ class SIIUploadXMLWizardInherit(models.TransientModel):
         return created
 
     def do_create_inv(self):
+        _logger.warning("uno.")
         created = []
         dtes = self._get_dtes()
         for dte in dtes:
             try:
                 # Aseguramos que procesamos como factura, no PO, para ejecutar el bloque de totales
                 self.crear_po = False 
-                
+                _logger.warning("dos")
                 to_post = self.type == "ventas" or self.option == "accept"
                 company_id = self.document_id.company_id
                 documento = dte.find("Documento")
@@ -176,11 +177,11 @@ class SIIUploadXMLWizardInherit(models.TransientModel):
                 if self.type == "ventas":
                     path_rut = "Encabezado/Emisor/RUTEmisor"
                 rut = documento.find(path_rut).text
-                
+                _logger.warning("tres")
                 # --- BÚSQUEDA INTELIGENTE ---
                 company_id = self._search_company_smart(rut)
                 # ---------------------------------
-
+                _logger.warning("cuatro")
                 if not company_id:
                     raise UserError(_(f"No existe compañia para el rut {rut}"))
                 
@@ -213,7 +214,7 @@ class SIIUploadXMLWizardInherit(models.TransientModel):
                 if totales is None:
                     _logger.warning("Totales no encontrado en el XML. No se actualizaron totales.")
                     continue
-
+                _logger.warning("cinco")
                 vlr_pagar = totales.find("VlrPagar")
                 if vlr_pagar is not None and vlr_pagar.text:
                     valor_vlrpagar = int(vlr_pagar.text or 0)
