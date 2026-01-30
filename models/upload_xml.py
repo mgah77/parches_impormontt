@@ -3,15 +3,13 @@
 import logging
 from lxml import etree
 from odoo import models, api, _
-import sys
 
-# Asegúrate de que tu módulo pueda importar esto si es una dependencia externa
-# Si no está instalado como paquete Python del sistema, es posible que necesites ajustar el path
+# Asegúrate de poder importar la librería de facturación externa
 try:
     from facturacion_electronica import facturacion_electronica as fe
 except ImportError:
     _logger = logging.getLogger(__name__)
-    _logger.warning("No se pudo importar facturacion_electronica como fe. El módulo puede no funcionar.")
+    _logger.warning("No se pudo importar facturacion_electronica como fe.")
 
 _logger = logging.getLogger(__name__)
 
@@ -20,7 +18,6 @@ class SIIUploadXMLWizardInherit(models.TransientModel):
     _inherit = "sii.dte.upload_xml.wizard"
 
     def do_receipt_deliver(self):
-        # --- INICIO DEL MÉTODO HEREDADO Y MODIFICADO ---
         self.ensure_one()
         
         # 1. Leer el XML
@@ -35,46 +32,45 @@ class SIIUploadXMLWizardInherit(models.TransientModel):
             
         rut_xml = rut_node.text
         
-        # --- BLOQUE DE BÚSQUEDA INTELIGENTE (FIX) ---
-        # Normalizamos el RUT quitando puntos, guiones y CL para dejar solo el número limpio
+        # 3. BÚSQUEDA INTELIGENTE DE COMPAÑÍA (FIX)
+        # Normalizamos el RUT quitando puntos, guiones y CL
         rut_clean = rut_xml.replace(".", "").replace("-", "").replace("CL", "").upper().strip()
         
+        company_id = False
+
         if len(rut_clean) >= 9:
             # Separamos el número del dígito verificador
             rut_num = rut_clean[:-1]
             rut_dv = rut_clean[-1]
-            
-            # Generamos los posibles formatos en los que podría estar guardado en la BD
+
+            # Generar los candidatos de formatos probables en la base de datos
             vat_candidates = [
                 "CL" + rut_num + "-" + rut_dv,  # CL77334434-4 (Estándar Odoo l10n_cl)
-                rut_num + "-" + rut_dv,         # 77334434-4 (Formato común)
-                "CL" + rut_clean,               # CL77334434 (Formato de tu función format_rut)
+                rut_num + "-" + rut_dv,         # 77334434-4 (Formato viejo)
+                "CL" + rut_clean,               # CL77334434 (Formato actual de tu función)
                 rut_clean                       # 77334434 (Solo números)
             ]
 
-            company_id = False
+            # Intentar buscar la compañía con cada formato candidato
             for vat in vat_candidates:
                 company_id = self.env["res.company"].search([("vat", "=", vat)], limit=1)
                 if company_id:
                     _logger.info("Compañía encontrada usando formato: %s -> %s", vat, company_id.name)
                     break
             
-            # Si con coincidencia exacta no funcionó, intentamos búsqueda parcial (LIKE) como último recurso
-            # Esto ayuda si hay formatos con puntos (ej: 77.334.434-4)
+            # Si no la encuentra con "=" (exacto), intentar búsqueda por contención ("like") como último recurso
             if not company_id:
+                # Cuidado: Esto puede traer la empresa equivocada si un RUT es substring de otro
                 company_id = self.env["res.company"].search([("vat", "like", rut_clean)], limit=1)
                 if company_id:
                     _logger.warning("Compañía encontrada por búsqueda parcial (LIKE). VAT en BD: %s", company_id.vat)
-        else:
-            company_id = False
-        --- FIN BLOQUE DE BÚSQUEDA INTELIGENTE ---
 
-        # Si no encontramos compañía, salimos (aqui es donde antes daba False)
+        # Si no encontramos compañía, salimos
         if not company_id:
             _logger.warning("No se pudo encontrar compañía para el RUT: %s", rut_xml)
             return True
 
-        # --- CONTINUACIÓN DEL CÓDIGO ORIGINAL ---
+        # 4. CONTINUACIÓN DEL CÓDIGO ORIGINAL
         # Ahora que tenemos company_id, el resto del flujo es igual
         
         # Obtener ID de respuesta
