@@ -160,7 +160,7 @@ class SIIUploadXMLWizardInherit(models.TransientModel):
                 if self.dte_id:
                     self.dte_id.message_post(body=msg)
         return created
-        
+
     def do_create_inv(self):
         created = []
         dtes = self._get_dtes()
@@ -230,7 +230,7 @@ class SIIUploadXMLWizardInherit(models.TransientModel):
                 neto_total = mnt_neto + mnt_exe
                 signo = -1 if inv.move_type == 'in_invoice' else 1
                 
-                _logger.info("Actualizando Totales SQL - Neto: %s, IVA: %s, Total: %s", neto_total, iva, mnt_total)
+                _logger.warning("Actualizando Totales SQL - Neto: %s, IVA: %s, Total: %s", neto_total, iva, mnt_total)
 
                 total_signed = mnt_total * signo
                 untaxed_signed = (mnt_neto + mnt_exe) * signo
