@@ -200,7 +200,7 @@ class SIIUploadXMLWizardInherit(models.TransientModel):
 
     def do_create_inv(self):
         # Lógica modificada para crear la factura en dos pasos (Cabecera -> Líneas)
-        # Esto evita errores de balance al momento de la creación estricta.
+        # Y asignar Tipo de Contribuyente si falta.
         created = []
         dtes = self._get_dtes()
         for dte in dtes:
@@ -224,14 +224,11 @@ class SIIUploadXMLWizardInherit(models.TransientModel):
                 data = self._get_data(documento, company_id)
                 
                 # --- NUEVA LÓGICA DE CREACIÓN EN DOS PASOS ---
-                # Paso 1: Extraer las líneas
                 lines = data.get('invoice_line_ids', [])
                 
-                # Paso 2: Crear la cabecera de la factura SIN líneas
-                # Eliminamos invoice_line_ids del diccionario para la primera creación
                 header_data = data.copy()
                 header_data.pop('invoice_line_ids', None)
-                header_data.pop('line_ids', None) # Prevenir conflicto con campo antiguo
+                header_data.pop('line_ids', None)
                 
                 inv = self.env["account.move"].create(header_data)
                 
@@ -240,16 +237,31 @@ class SIIUploadXMLWizardInherit(models.TransientModel):
                 if inv:
                     created.append(inv.id)
                 
-                # Paso 3: Agregar las líneas mediante write
-                # Esto permite a Odoo calcular cuentas por defecto sin bloquearse al crear
+                # Agregar líneas
                 if lines:
                     inv.write({'invoice_line_ids': lines})
-                # ----------------------------------------------
-
+                
                 if not inv:
                     raise UserError(
                         "El archivo XML no contiene documentos para alguna empresa registrada en Odoo, o ya ha sido procesado anteriormente "
                     )
+
+                # --- FIX FINAL: ASIGNAR TIPO DE CONTRIBUYENTE ---
+                # Odoo l10n_cl exige este campo para postear.
+                # Si el partner no lo tiene, lo asignamos por defecto (Rated/Calificado)
+                if not inv.partner_id.l10n_cl_fe_dte_taxpayer_type:
+                    # Buscamos el tipo "Rated" (Código 4 en estándar l10n_cl)
+                    taxpayer = self.env['l10n_cl_fe.dte.taxpayer.type'].search([('code', '=', '4')], limit=1)
+                    if taxpayer:
+                        _logger.warning("FIX: Asignando Tipo de Contribuyente 'Rated' al partner %s", inv.partner_id.name)
+                        inv.partner_id.sudo().write({'l10n_cl_fe_dte_taxpayer_type': taxpayer.id})
+                    else:
+                        # Si no encuentra por código, intentamos buscar por nombre "Rated" o "Calificado" como fallback
+                        taxpayer = self.env['l10n_cl_fe.dte.taxpayer.type'].search([('name', 'ilike', 'Rated')], limit=1)
+                        if taxpayer:
+                            inv.partner_id.sudo().write({'l10n_cl_fe_dte_taxpayer_type': taxpayer.id})
+                # -------------------------------------------------
+
                 if to_post and inv.state=="draft":
                     inv._onchange_partner_id()
                     inv._onchange_invoice_line_ids()
@@ -260,7 +272,6 @@ class SIIUploadXMLWizardInherit(models.TransientModel):
                     )._post()
                     
                 # --- BLOQUE SQL ORIGINAL PARA TOTALES ---
-                # Este bloque sigue igual para forzar los valores finales
                 if not self.crear_po:
                     encabezado = documento.find("Encabezado")
                     if encabezado is None: continue
