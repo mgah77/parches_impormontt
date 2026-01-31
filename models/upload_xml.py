@@ -199,7 +199,8 @@ class SIIUploadXMLWizardInherit(models.TransientModel):
         return data
 
     def do_create_inv(self):
-        # Revertido a lógica original pero con búsqueda inteligente de compañía
+        # Lógica modificada para crear la factura en dos pasos (Cabecera -> Líneas)
+        # Esto evita errores de balance al momento de la creación estricta.
         created = []
         dtes = self._get_dtes()
         for dte in dtes:
@@ -219,13 +220,32 @@ class SIIUploadXMLWizardInherit(models.TransientModel):
                 if not company_id:
                     raise UserError(_(f"No existe compañia para el rut {rut}"))
                 
-                # Se llama al original _get_data (que ahora tiene el parche de diario interno)
-                inv = self._create_inv(documento, company_id,)
+                # Obtenemos todos los datos (incluyendo líneas)
+                data = self._get_data(documento, company_id)
+                
+                # --- NUEVA LÓGICA DE CREACIÓN EN DOS PASOS ---
+                # Paso 1: Extraer las líneas
+                lines = data.get('invoice_line_ids', [])
+                
+                # Paso 2: Crear la cabecera de la factura SIN líneas
+                # Eliminamos invoice_line_ids del diccionario para la primera creación
+                header_data = data.copy()
+                header_data.pop('invoice_line_ids', None)
+                header_data.pop('line_ids', None) # Prevenir conflicto con campo antiguo
+                
+                inv = self.env["account.move"].create(header_data)
                 
                 if self.document_id:
                     self.document_id.move_id = inv.id
                 if inv:
                     created.append(inv.id)
+                
+                # Paso 3: Agregar las líneas mediante write
+                # Esto permite a Odoo calcular cuentas por defecto sin bloquearse al crear
+                if lines:
+                    inv.write({'invoice_line_ids': lines})
+                # ----------------------------------------------
+
                 if not inv:
                     raise UserError(
                         "El archivo XML no contiene documentos para alguna empresa registrada en Odoo, o ya ha sido procesado anteriormente "
@@ -240,6 +260,7 @@ class SIIUploadXMLWizardInherit(models.TransientModel):
                     )._post()
                     
                 # --- BLOQUE SQL ORIGINAL PARA TOTALES ---
+                # Este bloque sigue igual para forzar los valores finales
                 if not self.crear_po:
                     encabezado = documento.find("Encabezado")
                     if encabezado is None: continue
@@ -274,6 +295,8 @@ class SIIUploadXMLWizardInherit(models.TransientModel):
                             inv.company_id,
                             inv.date or fields.Date.context_today(self)
                         ) * signo
+
+                    _logger.warning("Actualizando Totales SQL - Neto: %s, IVA: %s, Total: %s", neto_total, iva, mnt_total)
 
                     self.env.cr.execute("""
                         UPDATE account_move
@@ -313,16 +336,6 @@ class SIIUploadXMLWizardInherit(models.TransientModel):
                         SET invoice_date_due = %s
                         WHERE id = %s
                     """, (fecha_vencimiento, inv.id))
-
-                    lines = data.get("invoice_line_ids", [])
-                    # NOTA IMPORTANTE: Aquí 'data' no existe en este contexto porque fue llamado dentro de _create_inv.
-                    # Para forzar los subtotales de líneas desde el XML original en este método externo,
-                    # tendríamos que volver a parsearlos. Dado que _create_inv ya llamó _get_data y _create,
-                    # asumimos que las líneas están en inv.invoice_line_ids.
-                    
-                    # Vamos a omitir el forzado de price_subtotal línea por línea aquí 
-                    # para evitar errores de datos desincronizados, ya que los totales generales
-                    # ya fueron forzados en el UPDATE anterior.
 
             except Exception as e:
                 msg = "Error en crear 1 factura con error:  %s" % str(e)
