@@ -16,34 +16,41 @@ _logger = logging.getLogger(__name__)
 
 class SIIUploadXMLWizardInherit(models.TransientModel):
     _inherit = "sii.dte.upload_xml.wizard"
-
+    
     def _get_xml(self):
         import re
         import base64
-        # Decodificar el archivo
+        
         try:
+            # Decodificar el archivo
             xml_content = base64.b64decode(self.xml_file).decode("ISO-8859-1")
         except Exception as e:
             _logger.warning("Error decoding xml_file: %s", e)
             return ""
 
-        # --- FIX: Limpiar espacios, BOM y declaración XML para evitar errores de lxml ---
-        # 1. Eliminar espacios en blanco al inicio (que causan "Start tag expected")
+        # --- LIMPIEZA AGRESIVA PARA XML MALFORMADO ---
+        # 1. Quitar BOM (Byte Order Mark) explícitamente.
+        #    Este carácter invisible causa "Start tag expected" en lxml.
+        if xml_content.startswith('\ufeff'):
+            xml_content = xml_content[1:]
+        elif xml_content.startswith('\ufffe'):
+            xml_content = xml_content[1:]
+        
+        # 2. Quitar espacios y saltos de línea al inicio (Lstrip)
         xml_content = xml_content.lstrip()
         
-        # 2. Eliminar cualquier declaración XML (<?xml ...?>) usando regex
-        # Esto maneja standalone="no", encoding, etc.
+        # 3. Quitar CUALQUIER declaración XML (<?xml ... ?>)
+        #    Regex para cubrir versiones, encodings y standalone="no"
         xml_content = re.sub(r'<\?xml[^>]*\?>', '', xml_content)
         
-        # 3. Mantener las otras limpiezas originales del wizard
-        xml_content = xml_content.replace('<ds:','<')\
-            .replace('<ds:','<')\
-            .replace('</ds:','</')\
-            .replace('<DscItem />','')
-        # ---------------------------------------------------------------------------
+        # 4. Limpiar xmlns de SII (Original)
+        xml_content = xml_content.replace('xmlns="http://www.sii.cl/SiiDte"', "")
+        
+        # 5. Limpiar prefijos ds: y DscItem (Original)
+        xml_content = xml_content.replace('<ds:','<').replace('</ds:','</').replace('<DscItem />','')
+        # -------------------------------------------
 
         return xml_content
-
 
     def _search_company_smart(self, rut_xml):
         """
