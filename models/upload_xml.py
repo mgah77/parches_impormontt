@@ -16,9 +16,10 @@ _logger = logging.getLogger(__name__)
 
 class SIIUploadXMLWizardInherit(models.TransientModel):
     _inherit = "sii.dte.upload_xml.wizard"
-    
+
     def _get_xml(self):
         import re
+        import base64
         # Decodificar el archivo
         try:
             xml_content = base64.b64decode(self.xml_file).decode("ISO-8859-1")
