@@ -11,7 +11,7 @@
        """,
     'author' : 'M.Gah',
     'website': '',
-    'depends': ['account','l10n_cl_fe'],
+    'depends': ['base','account','l10n_cl_fe'],
     'data': [
             "security/groups.xml",
             "views/configuration_menu.xml",
