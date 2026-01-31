@@ -357,3 +357,35 @@ class SIIUploadXMLWizardInherit(models.TransientModel):
                     self.purchase_to_done = po
                     self.crear_po = False
         return created
+        
+    def _get_journal(self, sii_code, company_id, ignore_journal=False):
+        # 1. Intentar buscar con la lógica original (diario específico de la compañía)
+        journal_id = super(SIIUploadXMLWizardInherit, self)._get_journal(sii_code, company_id, ignore_journal)
+        if journal_id:
+            return journal_id
+        
+        # 2. FALLBACK: Si no encontró (porque no hay diario por compañía),
+        # buscar cualquier diario que coincida con el tipo de documento, 
+        # restringido a las compañías del usuario actual.
+        _logger.warning("No se encontró diario para la compañía %s (DTE %s). Buscando en otras compañías...", company_id.name, sii_code)
+        
+        dc_id = self.env["sii.document_class"].search([("sii_code", "=", sii_code)])
+        if not dc_id:
+            return False
+
+        type = "purchase"
+        query = [("company_id", "in", self.env.user.company_ids.ids)]
+        if self.type == "ventas":
+            type = "sale"
+            query.append(("journal_document_class_ids.sii_document_class_id", "=", dc_id.id))
+        else:
+            query.append(("document_class_ids", "=", dc_id.id))
+        query.append(("type", "=", type))
+        
+        journal_id = self.env["account.journal"].search(query, limit=1)
+        
+        if not journal_id and not ignore_journal:
+            _logger.warning("No se pudo encontrar ningún diario para el DTE %s.", sii_code)
+            # Si aquí aún no encuentra, Odoo luego lanzará el error, pero al menos intentamos todas las opciones.
+            
+        return journal_id
