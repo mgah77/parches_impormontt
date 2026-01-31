@@ -2,7 +2,7 @@
 
 import logging
 from lxml import etree
-from odoo import models, api, _
+from odoo import models, api, fields, _
 from datetime import timedelta
 
 try:
@@ -197,7 +197,7 @@ class SIIUploadXMLWizardInherit(models.TransientModel):
                 _logger.warning("DEBUG: NO se encontró diario ni siquiera genérico.")
         
         return data
-        
+
     def do_create_inv(self):
         # Lógica modificada para crear la factura en dos pasos (Cabecera -> Líneas)
         # Y manejo de errores de publicación para dejar la factura en borrador si fallan validaciones de campos faltantes.
