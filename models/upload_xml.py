@@ -197,10 +197,10 @@ class SIIUploadXMLWizardInherit(models.TransientModel):
                 _logger.warning("DEBUG: NO se encontró diario ni siquiera genérico.")
         
         return data
-
+        
     def do_create_inv(self):
         # Lógica modificada para crear la factura en dos pasos (Cabecera -> Líneas)
-        # Y asignar Tipo de Contribuyente si falta.
+        # Y manejo de errores de publicación para dejar la factura en borrador si fallan validaciones de campos faltantes.
         created = []
         dtes = self._get_dtes()
         for dte in dtes:
@@ -240,38 +240,36 @@ class SIIUploadXMLWizardInherit(models.TransientModel):
                 # Agregar líneas
                 if lines:
                     inv.write({'invoice_line_ids': lines})
-                
+                # ----------------------------------------------
+
                 if not inv:
                     raise UserError(
                         "El archivo XML no contiene documentos para alguna empresa registrada en Odoo, o ya ha sido procesado anteriormente "
                     )
-
-                # --- FIX FINAL: ASIGNAR TIPO DE CONTRIBUYENTE ---
-                # Odoo l10n_cl exige este campo para postear.
-                # Si el partner no lo tiene, lo asignamos por defecto (Rated/Calificado)
-                if not inv.partner_id.l10n_cl_fe_dte_taxpayer_type:
-                    # Buscamos el tipo "Rated" (Código 4 en estándar l10n_cl)
-                    taxpayer = self.env['l10n_cl_fe.dte.taxpayer.type'].search([('code', '=', '4')], limit=1)
-                    if taxpayer:
-                        _logger.warning("FIX: Asignando Tipo de Contribuyente 'Rated' al partner %s", inv.partner_id.name)
-                        inv.partner_id.sudo().write({'l10n_cl_fe_dte_taxpayer_type': taxpayer.id})
+                
+                # --- INTENTO DE PUBLICACIÓN CON MANEJO DE ERRORES ---
+                try:
+                    if to_post and inv.state=="draft":
+                        inv._onchange_partner_id()
+                        inv._onchange_invoice_line_ids()
+                        inv.with_context(
+                            purchase_to_done=self.purchase_to_done.id,
+                            check_move_validity=False,
+                            recompute=False,
+                        )._post()
+                except Exception as e:
+                    # Si falla por falta de datos de contribuyente u otros validaciones de l10n_cl,
+                    # dejamos la factura en borrador pero continuamos para actualizar totales.
+                    if "tipo de contribuyente" in str(e) or "Tax payer type" in str(e):
+                        _logger.warning("Fallo la publicación de la factura (Error de tipo de contribuyente). La factura se mantiene en borrador y se actualizarán totales. Error: %s", str(e))
+                        # No hacemos 'raise', permitimos continuar al bloque SQL
                     else:
-                        # Si no encuentra por código, intentamos buscar por nombre "Rated" o "Calificado" como fallback
-                        taxpayer = self.env['l10n_cl_fe.dte.taxpayer.type'].search([('name', 'ilike', 'Rated')], limit=1)
-                        if taxpayer:
-                            inv.partner_id.sudo().write({'l10n_cl_fe_dte_taxpayer_type': taxpayer.id})
-                # -------------------------------------------------
+                        # Si es otro error (ej: balance), si lanzamos
+                        raise
+                # -------------------------------------------------------
 
-                if to_post and inv.state=="draft":
-                    inv._onchange_partner_id()
-                    inv._onchange_invoice_line_ids()
-                    inv.with_context(
-                        purchase_to_done=self.purchase_to_done.id,
-                        check_move_validity=False,
-                        recompute=False,
-                    )._post()
-                    
                 # --- BLOQUE SQL ORIGINAL PARA TOTALES ---
+                # Este bloque se ejecutará tanto si se publicó bien como si falló el paso anterior (quedando en borrador)
                 if not self.crear_po:
                     encabezado = documento.find("Encabezado")
                     if encabezado is None: continue
