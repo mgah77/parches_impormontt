@@ -17,38 +17,6 @@ _logger = logging.getLogger(__name__)
 class SIIUploadXMLWizardInherit(models.TransientModel):
     _inherit = "sii.dte.upload_xml.wizard"
     
-    def _get_xml(self):
-        import re
-        import base64
-        
-        try:
-            # Decodificar el archivo
-            xml_content = base64.b64decode(self.xml_file).decode("ISO-8859-1")
-        except Exception as e:
-            _logger.warning("Error decoding xml_file: %s", e)
-            return ""
-
-        # --- SOLUCIÓN DEFINITIVA: ELIMINAR BASURA INICIAL ---
-        # Cortar todo lo que haya antes de la primera etiqueta '<'
-        # Esto elimina BOMs, espacios, saltos de línea o cualquier otra basura
-        start_pos = xml_content.find('<')
-        if start_pos != -1 and start_pos > 0:
-            _logger.warning("Limpieza Forzada XML: Se eliminaron %d caracteres al inicio.", start_pos)
-            xml_content = xml_content[start_pos:]
-        # --------------------------------------------------
-
-        # --- LIMPIEZA DE DECLARACIONES Y ESPACIOS ---
-        # Eliminar cualquier declaración XML (<?xml ...?>)
-        xml_content = re.sub(r'<\?xml[^>]*\?>', '', xml_content)
-        
-        # Limpiar xmlns de SII
-        xml_content = xml_content.replace(' xmlns="http://www.sii.cl/SiiDte"', "")
-        
-        # Limpiar prefijos ds: y DscItem
-        xml_content = xml_content.replace('<ds:','<').replace('</ds:','</').replace('<DscItem />','')
-        # ------------------------------------------------
-        
-        return xml_content
 
     def _search_company_smart(self, rut_xml):
         """
