@@ -16,6 +16,33 @@ _logger = logging.getLogger(__name__)
 
 class SIIUploadXMLWizardInherit(models.TransientModel):
     _inherit = "sii.dte.upload_xml.wizard"
+    
+    def _get_xml(self):
+        import re
+        # Decodificar el archivo
+        try:
+            xml_content = base64.b64decode(self.xml_file).decode("ISO-8859-1")
+        except Exception as e:
+            _logger.warning("Error decoding xml_file: %s", e)
+            return ""
+
+        # --- FIX: Limpiar espacios, BOM y declaración XML para evitar errores de lxml ---
+        # 1. Eliminar espacios en blanco al inicio (que causan "Start tag expected")
+        xml_content = xml_content.lstrip()
+        
+        # 2. Eliminar cualquier declaración XML (<?xml ...?>) usando regex
+        # Esto maneja standalone="no", encoding, etc.
+        xml_content = re.sub(r'<\?xml[^>]*\?>', '', xml_content)
+        
+        # 3. Mantener las otras limpiezas originales del wizard
+        xml_content = xml_content.replace('<ds:','<')\
+            .replace('<ds:','<')\
+            .replace('</ds:','</')\
+            .replace('<DscItem />','')
+        # ---------------------------------------------------------------------------
+
+        return xml_content
+
 
     def _search_company_smart(self, rut_xml):
         """
