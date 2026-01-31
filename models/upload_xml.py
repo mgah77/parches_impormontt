@@ -162,13 +162,10 @@ class SIIUploadXMLWizardInherit(models.TransientModel):
         return created
 
     def do_create_inv(self):
-        
         created = []
         dtes = self._get_dtes()
         for dte in dtes:
             try:
-                # Aseguramos que procesamos como factura, no PO, para ejecutar el bloque de totales
-                self.crear_po = False                 
                 to_post = self.type == "ventas" or self.option == "accept"
                 company_id = self.document_id.company_id
                 documento = dte.find("Documento")
@@ -177,26 +174,51 @@ class SIIUploadXMLWizardInherit(models.TransientModel):
                     path_rut = "Encabezado/Emisor/RUTEmisor"
                 rut = documento.find(path_rut).text
                 
-                # --- BÚSQUEDA INTELIGENTE ---
+                # --- FIX: BÚSQUEDA INTELIGENTE ---
                 company_id = self._search_company_smart(rut)
                 # ---------------------------------
-                
-                _logger.warning("uno.")
+
                 if not company_id:
                     raise UserError(_(f"No existe compañia para el rut {rut}"))
-                _logger.warning("dos")
+                
+                # Llamada original
                 data = self._get_data(documento, company_id)
+                
+                # --- PATCH MANUAL PARA DARIO FALTANTE ---
+                # Si el _get_data original no encontró diario (por falta de config por compañía), lo buscamos aquí.
+                if not data.get('journal_id'):
+                    _logger.warning("DEBUG: _get_data devolvió journal_id False. Buscando manualmente en do_create_inv...")
+                    encabezado = documento.find("Encabezado")
+                    IdDoc = encabezado.find("IdDoc") if encabezado is not None else None
+                    sii_code = IdDoc.find("TipoDTE").text if IdDoc is not None else False
+                    
+                    if sii_code:
+                        dc_id = self.env["sii.document_class"].search([("sii_code", "=", sii_code)])
+                        type = "purchase"
+                        # Buscar diario en cualquier compañía del usuario
+                        query = [("company_id", "in", self.env.user.company_ids.ids)]
+                        if self.type == "ventas":
+                            type = "sale"
+                            query.append(("journal_document_class_ids.sii_document_class_id", "=", dc_id.id))
+                        else:
+                            query.append(("document_class_ids", "=", dc_id.id))
+                        query.append(("type", "=", type))
+                        
+                        journal_id = self.env["account.journal"].search(query, limit=1)
+                        if journal_id:
+                            _logger.warning("DEBUG: Encontrado diario genérico: %s. Asignando a data.", journal_id.name)
+                            data['journal_id'] = journal_id.id
+                # -------------------------------------------
+
                 inv = self._create_inv(documento, company_id,)
                 if self.document_id:
                     self.document_id.move_id = inv.id
-                _logger.warning("tres")
                 if inv:
                     created.append(inv.id)
                 if not inv:
                     raise UserError(
                         "El archivo XML no contiene documentos para alguna empresa registrada en Odoo, o ya ha sido procesado anteriormente "
                     )
-                _logger.warning("cuatro")
                 if to_post and inv.state=="draft":
                     inv._onchange_partner_id()
                     inv._onchange_invoice_line_ids()
@@ -206,100 +228,94 @@ class SIIUploadXMLWizardInherit(models.TransientModel):
                         recompute=False,
                     )._post()
                     
-                # --- Lógica de Totales y SQL ---
-                encabezado = documento.find("Encabezado")
-                if encabezado is None:
-                    _logger.warning("Encabezado no encontrado en el XML. No se actualizaron totales.")
-                    continue
+                # --- BLOQUE SQL ORIGINAL PARA TOTALES ---
+                if not self.crear_po:
+                    encabezado = documento.find("Encabezado")
+                    if encabezado is None: continue
+                    totales = encabezado.find("Totales")
+                    if totales is None: continue
 
-                totales = encabezado.find("Totales")
-                _logger.warning("cinco")
-                if totales is None:
-                    _logger.warning("Totales no encontrado en el XML. No se actualizaron totales.")
-                    continue
-                
-                vlr_pagar = totales.find("VlrPagar")
-                if vlr_pagar is not None and vlr_pagar.text:
-                    valor_vlrpagar = int(vlr_pagar.text or 0)
-                    if valor_vlrpagar != 0:
-                        mnt_total = valor_vlrpagar
+                    vlr_pagar = totales.find("VlrPagar")
+                    if vlr_pagar is not None and vlr_pagar.text:
+                        valor_vlrpagar = int(vlr_pagar.text or 0)
+                        if valor_vlrpagar != 0:
+                            mnt_total = valor_vlrpagar
+                        else:
+                            mnt_total = int(totales.find("MntTotal").text or 0)
                     else:
                         mnt_total = int(totales.find("MntTotal").text or 0)
-                else:
-                    mnt_total = int(totales.find("MntTotal").text or 0)
 
-                mnt_neto = int(totales.find("MntNeto").text or 0) if totales.find("MntNeto") is not None else 0
-                mnt_exe = int(totales.find("MntExe").text or 0) if totales.find("MntExe") is not None else 0              
-                iva = int(totales.find("IVA").text or 0) if totales.find("IVA") is not None else 0
-                neto_total = mnt_neto + mnt_exe
-                signo = -1 if inv.move_type == 'in_invoice' else 1
-                
-                _logger.warning("Actualizando Totales SQL - Neto: %s, IVA: %s, Total: %s", neto_total, iva, mnt_total)
+                    mnt_neto = int(totales.find("MntNeto").text or 0) if totales.find("MntNeto") is not None else 0
+                    mnt_exe = int(totales.find("MntExe").text or 0) if totales.find("MntExe") is not None else 0              
+                    iva = int(totales.find("IVA").text or 0) if totales.find("IVA") is not None else 0
+                    neto_total = mnt_neto + mnt_exe
+                    signo = -1 if inv.move_type == 'in_invoice' else 1
+                    total_signed = mnt_total * signo
+                    untaxed_signed = (mnt_neto + mnt_exe) * signo
+                    tax_signed = iva * signo
+                    residual = mnt_total
+                    residual_signed = total_signed
+                    currency_total_signed = total_signed
+                    if inv.currency_id != inv.company_id.currency_id:
+                        currency_total_signed = inv.currency_id._convert(
+                            mnt_total,
+                            inv.currency_id,
+                            inv.company_id,
+                            inv.date or fields.Date.context_today(self)
+                        ) * signo
 
-                total_signed = mnt_total * signo
-                untaxed_signed = (mnt_neto + mnt_exe) * signo
-                tax_signed = iva * signo
-                residual = mnt_total
-                residual_signed = total_signed
-                currency_total_signed = total_signed
-                if inv.currency_id != inv.company_id.currency_id:
-                    currency_total_signed = inv.currency_id._convert(
+                    _logger.warning("Actualizando Totales SQL - Neto: %s, IVA: %s, Total: %s", neto_total, iva, mnt_total)
+
+                    self.env.cr.execute("""
+                        UPDATE account_move
+                        SET amount_untaxed = %s,
+                            amount_tax = %s,
+                            amount_total = %s,
+                            amount_untaxed_signed = %s,
+                            amount_tax_signed = %s,
+                            amount_total_signed = %s,
+                            amount_total_in_currency_signed = %s,
+                            amount_residual = %s,
+                            amount_residual_signed = %s
+                        WHERE id = %s
+                    """, (
+                        neto_total,
+                        iva,
                         mnt_total,
-                        inv.currency_id,
-                        inv.company_id,
-                        inv.date or fields.Date.context_today(self)
-                    ) * signo
+                        untaxed_signed,
+                        tax_signed,
+                        total_signed,
+                        currency_total_signed,
+                        residual,
+                        residual_signed,
+                        inv.id
+                    ))
 
-                self.env.cr.execute("""
-                    UPDATE account_move
-                    SET amount_untaxed = %s,
-                        amount_tax = %s,
-                        amount_total = %s,
-                        amount_untaxed_signed = %s,
-                        amount_tax_signed = %s,
-                        amount_total_signed = %s,
-                        amount_total_in_currency_signed = %s,
-                        amount_residual = %s,
-                        amount_residual_signed = %s
-                    WHERE id = %s
-                """, (
-                    neto_total,
-                    iva,
-                    mnt_total,
-                    untaxed_signed,
-                    tax_signed,
-                    total_signed,
-                    currency_total_signed,
-                    residual,
-                    residual_signed,
-                    inv.id
-                ))
+                    fch_emis = encabezado.find("IdDoc/FchEmis").text
+                    fch_venc_node = encabezado.find("IdDoc/FchVenc")
+                    if fch_venc_node is not None and fch_venc_node.text:
+                        fecha_vencimiento = fch_venc_node.text
+                    else:
+                        fecha_emision = fields.Date.from_string(fch_emis)
+                        fecha_vencimiento = fields.Date.to_string(fecha_emision + timedelta(days=30))
 
-                fch_emis = encabezado.find("IdDoc/FchEmis").text
-                fch_venc_node = encabezado.find("IdDoc/FchVenc")
-                if fch_venc_node is not None and fch_venc_node.text:
-                    fecha_vencimiento = fch_venc_node.text
-                else:
-                    fecha_emision = fields.Date.from_string(fch_emis)
-                    fecha_vencimiento = fields.Date.to_string(fecha_emision + timedelta(days=30))
+                    self.env.cr.execute("""
+                        UPDATE account_move
+                        SET invoice_date_due = %s
+                        WHERE id = %s
+                    """, (fecha_vencimiento, inv.id))
 
-                self.env.cr.execute("""
-                    UPDATE account_move
-                    SET invoice_date_due = %s
-                    WHERE id = %s
-                """, (fecha_vencimiento, inv.id))
-
-                lines = data.get("invoice_line_ids", [])
-                for i, line in enumerate(inv.invoice_line_ids.filtered(lambda l: not l.display_type and not l.tax_line_id)):
-                    if i < len(lines):
-                        subtotal = lines[i][2].get("price_subtotal")
-                        if subtotal is not None:
-                            self.env.cr.execute("""
-                                UPDATE account_move_line
-                                SET price_subtotal = %s 
-                                WHERE id = %s
-                            """, (subtotal, line.id))
-
+                    lines = data.get("invoice_line_ids", [])
+                    for i, line in enumerate(inv.invoice_line_ids.filtered(lambda l: not l.display_type and not l.tax_line_id)):
+                        if i < len(lines):
+                            subtotal = lines[i][2].get("price_subtotal")
+                            if subtotal is not None:
+                                self.env.cr.execute("""
+                                    UPDATE account_move_line
+                                    SET price_subtotal = %s 
+                                    WHERE id = %s
+                                """, (subtotal, line.id))
+            
             except Exception as e:
                 msg = "Error en crear 1 factura con error:  %s" % str(e)
                 _logger.warning(msg, exc_info=True)
@@ -389,39 +405,3 @@ class SIIUploadXMLWizardInherit(models.TransientModel):
             # Si aquí aún no encuentra, Odoo luego lanzará el error, pero al menos intentamos todas las opciones.
             
         return journal_id
-
-    def _get_data(self, documento, company_id, ignore_journal=False):
-        # 1. Ejecutamos el método original para obtener los datos estándar
-        data = super(SIIUploadXMLWizardInherit, self)._get_data(documento, company_id, ignore_journal)
-
-        # 2. REVISIÓN POSTERIOR: Si el original falló en encontrar diario (journal_id False), lo buscamos nosotros.
-        if data and not data.get('journal_id'):
-            _logger.warning("DEBUG (PATCH): El _get_data original devolvió journal_id False. Aplicando parche genérico...")
-            
-            # Buscar Tipo de DTE
-            encabezado = documento.find("Encabezado")
-            IdDoc = encabezado.find("IdDoc") if encabezado is not None else None
-            sii_code = IdDoc.find("TipoDTE").text if IdDoc is not None else False
-            
-            if sii_code:
-                dc_id = self.env["sii.document_class"].search([("sii_code", "=", sii_code)])
-                
-                type = "purchase"
-                query = [("company_id", "in", self.env.user.company_ids.ids)]
-                if self.type == "ventas":
-                    type = "sale"
-                    query.append(("journal_document_class_ids.sii_document_class_id", "=", dc_id.id))
-                else:
-                    query.append(("document_class_ids", "=", dc_id.id))
-                query.append(("type", "=", type))
-                
-                journal_id = self.env["account.journal"].search(query, limit=1)
-                
-                if journal_id:
-                    _logger.warning("DEBUG (PATCH): Diario genérico encontrado: %s. ASIGNANDO.", journal_id.name)
-                    # Inyectamos el diario en el diccionario de datos
-                    data['journal_id'] = journal_id.id
-                else:
-                    _logger.warning("DEBUG (PATCH): No se encontró ningún diario ni siquiera genérico.")
-
-        return data
