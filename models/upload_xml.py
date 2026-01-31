@@ -357,7 +357,7 @@ class SIIUploadXMLWizardInherit(models.TransientModel):
                     self.purchase_to_done = po
                     self.crear_po = False
         return created
-        
+
     def _get_journal(self, sii_code, company_id, ignore_journal=False):
         # 1. Intentar buscar con la lógica original (diario específico de la compañía)
         journal_id = super(SIIUploadXMLWizardInherit, self)._get_journal(sii_code, company_id, ignore_journal)
@@ -389,3 +389,39 @@ class SIIUploadXMLWizardInherit(models.TransientModel):
             # Si aquí aún no encuentra, Odoo luego lanzará el error, pero al menos intentamos todas las opciones.
             
         return journal_id
+
+    def _get_data(self, documento, company_id, ignore_journal=False):
+        # 1. Ejecutamos el método original para obtener los datos estándar
+        data = super(SIIUploadXMLWizardInherit, self)._get_data(documento, company_id, ignore_journal)
+
+        # 2. REVISIÓN POSTERIOR: Si el original falló en encontrar diario (journal_id False), lo buscamos nosotros.
+        if data and not data.get('journal_id'):
+            _logger.warning("DEBUG (PATCH): El _get_data original devolvió journal_id False. Aplicando parche genérico...")
+            
+            # Buscar Tipo de DTE
+            encabezado = documento.find("Encabezado")
+            IdDoc = encabezado.find("IdDoc") if encabezado is not None else None
+            sii_code = IdDoc.find("TipoDTE").text if IdDoc is not None else False
+            
+            if sii_code:
+                dc_id = self.env["sii.document_class"].search([("sii_code", "=", sii_code)])
+                
+                type = "purchase"
+                query = [("company_id", "in", self.env.user.company_ids.ids)]
+                if self.type == "ventas":
+                    type = "sale"
+                    query.append(("journal_document_class_ids.sii_document_class_id", "=", dc_id.id))
+                else:
+                    query.append(("document_class_ids", "=", dc_id.id))
+                query.append(("type", "=", type))
+                
+                journal_id = self.env["account.journal"].search(query, limit=1)
+                
+                if journal_id:
+                    _logger.warning("DEBUG (PATCH): Diario genérico encontrado: %s. ASIGNANDO.", journal_id.name)
+                    # Inyectamos el diario en el diccionario de datos
+                    data['journal_id'] = journal_id.id
+                else:
+                    _logger.warning("DEBUG (PATCH): No se encontró ningún diario ni siquiera genérico.")
+
+        return data
