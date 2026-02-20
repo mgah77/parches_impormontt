@@ -56,5 +56,6 @@
                 </p>
             </div>
         </xpath>
+        <xpath expr="//div[contains(@class,'row')][.//t[@t-if='o.glosa']]" position="replace"/>
     </template>
 </odoo>
