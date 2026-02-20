@@ -14,7 +14,6 @@ class IrAttachmentInherit(models.Model):
                     # Decodificar base64 a bytes
                     data_bytes = base64.b64decode(vals['datas'])
                     
-                    # Reemplazar EXACTAMENTE lo que pediste: standalone="no" (con esas comillas)
                     if b'standalone="no"' in data_bytes:
                         data_bytes = data_bytes.replace(b' standalone="no"', b'')
                         
