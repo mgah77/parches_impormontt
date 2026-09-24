@@ -239,8 +239,18 @@ class SIIUploadXMLWizardInherit(models.TransientModel):
                     created.append(inv.id)
                 
                 # Agregar líneas
+                write_vals = {}
+
                 if lines:
-                    inv.write({'invoice_line_ids': lines})
+                    write_vals['invoice_line_ids'] = lines
+
+                descuentos_globales = data.get('global_descuentos_recargos')
+
+                if descuentos_globales:
+                    write_vals['global_descuentos_recargos'] = descuentos_globales
+
+                if write_vals:
+                    inv.write(write_vals)
                 # ----------------------------------------------
 
                 if not inv:
